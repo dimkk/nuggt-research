@@ -34,7 +34,7 @@ const ChatbotNode: React.FC<NodeProps> = ({
       eds.filter((edge) => edge.source !== id && edge.target !== id)
     );
     // Also remove conversation from the store
-    useFlowStore.getState().removeConversation(id);
+    useFlowStore.getState().updateChatbotConversation(id, []);
   };
 
   // Node style

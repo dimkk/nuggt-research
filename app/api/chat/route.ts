@@ -5,6 +5,7 @@ import OpenAI from 'openai';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY, // Ensure your API key is set in environment variables
+  baseURL: 'https://bothub.chat/api/v2/openai/v1'
 });
 
 const SYSTEM_MESSAGE = {

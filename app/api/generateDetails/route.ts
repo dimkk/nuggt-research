@@ -4,6 +4,7 @@ import OpenAI from "openai";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
+  baseURL: 'https://bothub.chat/api/v2/openai/v1'
 });
 
 export async function POST(request: Request) {

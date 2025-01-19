@@ -6,6 +6,7 @@ import FirecrawlApp, { ScrapeResponse } from '@mendable/firecrawl-js'; // Added 
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY, // Ensure your OpenAI API key is set in environment variables
+  baseURL: 'https://bothub.chat/api/v2/openai/v1'
 });
 
 const firecrawlApp = new FirecrawlApp({ apiKey: process.env.FIRECRAWL_API_KEY }); // Initialized FirecrawlApp
