@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useCallback, useRef } from "react";
+import React, { useEffect, useCallback, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ReactFlow,
@@ -13,7 +13,9 @@ import {
   OnEdgesChange,
   applyNodeChanges,
   applyEdgeChanges,
-  MiniMap
+  MiniMap,
+  useReactFlow,
+  ReactFlowInstance
 } from "reactflow";
 import "reactflow/dist/style.css";
 import dagre from "dagre";
@@ -55,6 +57,14 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
   const [rfNodes, setRfNodes, onNodesChange] = useNodesState(nodes);
   const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState(edges);
   const [sources, setSources] = React.useState<{ [key: string]: any }>({});
+
+  // Store the ReactFlow instance
+  const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
+
+  // **Flag and Counter to control zooming with a threshold**
+  const hasZoomedRef = useRef(false);
+  const zoomCountRef = useRef(0);
+  const ZOOM_THRESHOLD = 2; // Threshold count
 
   useEffect(() => {
     setRfNodes(nodes);
@@ -140,7 +150,7 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
         updateNode(nodeId, {
           data: {
             status: "researching",
-            displayLabel: `Researching on ${searchQuery}`,
+            displayLabel: `Researching on ${searchQuery} (it may take 1-2 minutes)`,
           },
           style: {
             backgroundColor: "#ffd699",
@@ -227,7 +237,10 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
         if (ln) {
           return {
             ...node,
-            position: ln.position,
+            position: {
+              x: ln.position.x,
+              y: ln.position.y,
+            },
           };
         }
       }
@@ -241,7 +254,6 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
   const getLayoutedElements = (nodes: FlowNode[], edges: FlowEdge[], direction = "LR") => {
     const dagreGraph = new dagre.graphlib.Graph();
     dagreGraph.setDefaultEdgeLabel(() => ({}));
-    
 
     dagreGraph.setGraph({
       rankdir: direction,
@@ -251,14 +263,9 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
       marginy: 50,
     });
 
-    // Attempt to dynamically calculate node dimensions if available
-    // Otherwise fallback to default
     nodes.forEach((node) => {
-      const width = node.width;
-      //console.log(width);
-
-      const height = node.height;
-      //console.log(height);
+      const width = node.width || nodeWidth;
+      const height = node.height || nodeHeight;
       dagreGraph.setNode(node.id, { width, height });
     });
 
@@ -297,6 +304,41 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
     [rfNodes, updateNodePosition, setNodes]
   );
 
+  // **Zoom only up to the threshold for researching nodes**
+  useEffect(() => {
+    if (!reactFlowInstance || !rfNodes.length) return;
+
+    // **Check if zoom has already reached the threshold**
+    if (hasZoomedRef.current) {
+      return; // Exit if threshold is reached
+    }
+
+    // **Find the first node with data.status === 'researching'**
+    const researchingNode = rfNodes.find((n) => n.data?.status === "researching");
+    if (researchingNode) {
+      console.log("happening");
+      // **Calculate the center position**
+      const xCenter = researchingNode.position.x + ((researchingNode.width || nodeWidth) / 2);
+      const yCenter = researchingNode.position.y + ((researchingNode.height || nodeHeight) / 2);
+
+      // **Perform the zoom and centering**
+      reactFlowInstance.setCenter(xCenter, yCenter, {
+        zoom: 1.5,
+        duration: 800, // ms for smooth animation
+      });
+
+      // **Increment the zoom counter**
+      zoomCountRef.current += 1;
+      console.log(`Zoom count: ${zoomCountRef.current}`);
+
+      // **Check if the threshold is reached**
+      if (zoomCountRef.current >= ZOOM_THRESHOLD) {
+        hasZoomedRef.current = true;
+        console.log("Zoom threshold reached. Further zooms disabled.");
+      }
+    }
+  }, [rfNodes, reactFlowInstance]);
+
   return (
     <>
       {showFlow && (
@@ -319,6 +361,7 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
             onNodesChange={handleNodesChange}
             onEdgesChange={handleEdgesChange}
             onNodeDragStop={handleNodeDragStop}
+            onInit={setReactFlowInstance}
             nodesDraggable={true}
             elementsSelectable={true}
             fitView
